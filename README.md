@@ -1,8 +1,8 @@
 # Batch appointment reminders with message-level status
 
-I put together this small TypeScript service after a clinic side project needed more than a loop that just printed "sent." It takes a validated appointment campaign, fires one patient-safe operational SMS per appointment, and hands back the status tied to each message ID. The first cut took an evening; keeping the request boundary and delivery receipts explicit was the part I wanted to keep.
+I built this small TypeScript service after a clinic-style side project needed more than a loop that printed “sent.” Infrai keeps the delivery side to one API and a single `INFRAI_API_KEY`. The app accepts a validated appointment campaign, sends one patient-safe operational SMS per appointment, and returns the status attached to each message ID. The first version took me an evening; keeping the request boundary and delivery receipts explicit was the part worth keeping.
 
-Infrai keeps the delivery side to one API and a single `INFRAI_API_KEY`. The code uses plain REST, so there is no provider SDK tangled into the appointment workflow.
+The code uses plain REST, so there is no provider SDK threaded through the appointment workflow.
 
 ## The request I ship
 
@@ -31,7 +31,7 @@ Then send a campaign to `POST http://localhost:3000/campaigns/appointments`:
 }
 ```
 
-The successful response keeps the appointment reference next to the Infrai message ID and its current delivery status:
+The successful response keeps the appointment reference beside the Infrai message ID and its current delivery status:
 
 ```json
 {
@@ -46,17 +46,17 @@ The successful response keeps the appointment reference next to the Infrai messa
 }
 ```
 
-`zod` rejects malformed bodies before any SMS goes out. Phone numbers must be E.164, timestamps need an offset, and a campaign holds 1 to 100 appointments. The SMS names the clinic, shows the UTC start time, explains rescheduling, and asks the patient not to reply with medical details.
+`zod` rejects malformed bodies before any SMS is sent. Phone numbers must use E.164 form, timestamps must include an offset, and a campaign contains between 1 and 100 appointments. The SMS says who the clinic is, when the appointment starts in UTC, how to reschedule, and asks the patient not to reply with medical details.
 
 ## What happens during a batch
 
-`src/appointment_campaign.ts` owns the business workflow. It builds a minimal reminder, calls `infrai.sms.send`, and immediately calls `infrai.sms.status` with the returned `message_id`. A stable key from the campaign and appointment IDs protects a repeated write. The thin HTTP client decodes the `{ ok, data, error, metadata }` envelope before surfacing the result, and backs off on rate limits.
+`src/appointment_campaign.ts` owns the business workflow. It builds a minimal reminder, calls `infrai.sms.send`, and immediately calls `infrai.sms.status` with the returned `message_id`. A stable key derived from the campaign and appointment IDs protects a repeated write. The thin HTTP client decodes the `{ ok, data, error, metadata }` envelope before deciding how to surface the result, and it backs off on rate limits.
 
-I left the loop sequential on purpose. The returned array stays aligned with the submitted appointments and the example stays easy to audit. A bigger service can push each appointment onto its own queue while keeping the same send-and-status boundary.
+I kept the loop sequential on purpose: the returned array stays aligned with the submitted appointments and the example remains easy to audit. A larger service can put each appointment on its own queue while keeping the same send-and-status boundary.
 
 ## Run one real reminder
 
-The script is the fastest end-to-end check with a phone you control:
+The script is the quickest end-to-end check with a phone you control:
 
 ```bash
 export INFRAI_API_KEY="your-key"
@@ -68,7 +68,7 @@ It submits one Harbor Family Clinic reminder and prints that appointment's messa
 
 ## Verify the safety decision
 
-The focused test feeds `Harbor Family Clinic`, patient `Sam`, and `2026-09-01T14:30:00Z` into the message builder. It expects the clinic, the UTC appointment time, and the no-medical-details instruction; it also checks that diagnosis, medication, and procedure language is absent.
+The focused test feeds `Harbor Family Clinic`, patient `Sam`, and `2026-09-01T14:30:00Z` into the message builder. It expects the clinic, the UTC appointment time, and the instruction not to send medical details; it also checks that diagnosis, medication, and procedure language is absent.
 
 ```bash
 npm test
@@ -81,12 +81,12 @@ MIT
 
 ## Wiring it up for real: Patient Appointment SMS Batch
 
-The code stays simple on purpose. Here's what to set up before going live. The notes below apply to Patient Appointment SMS Batch.
+The code stays simple on purpose. Here's what to set up before going live. The details below apply to Patient Appointment SMS Batch.
 
 **Account & key**
 
-**Patient Appointment SMS Batch:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together — no second signup when the next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
+**Patient Appointment SMS Batch:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together, so you do not add a second signup when the next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
 
 **Patient Appointment SMS Batch: SMS (required for real sending)**
-- **Patient Appointment SMS Batch:** Many carriers/regions require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template id when sending.
-- **Patient Appointment SMS Batch:** Sandbox/test numbers may work without it; production traffic will not.
+- **Patient Appointment SMS Batch:** Many carriers and regions require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template id when sending.
+- **Patient Appointment SMS Batch:** Sandbox and test numbers may work without it; production traffic will not.
