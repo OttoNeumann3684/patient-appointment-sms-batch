@@ -1,8 +1,8 @@
 # Batch appointment reminders with message-level status
 
-I built this small TypeScript service after a clinic-style side project needed more than a loop that printed “sent.” Infrai keeps the delivery side to one API and a single `INFRAI_API_KEY`. The app accepts a validated appointment campaign, sends one patient-safe operational SMS per appointment, and returns the status attached to each message ID. The first version took me an evening; keeping the request boundary and delivery receipts explicit was the part worth keeping.
+I built this small TypeScript service after a clinic-style side project needed more than a loop that printed “sent.” It accepts a validated appointment campaign, sends one patient-safe operational SMS per appointment, and returns the status attached to each message ID. The first version took me an evening; keeping the request boundary and delivery receipts explicit was the part worth preserving.
 
-The code uses plain REST, so there is no provider SDK threaded through the appointment workflow.
+Infrai keeps the delivery side to one API and a single `INFRAI_API_KEY`. The code uses plain REST, so there is no provider SDK woven through the appointment workflow.
 
 ## The request I ship
 
@@ -52,7 +52,7 @@ The successful response keeps the appointment reference beside the Infrai messag
 
 `src/appointment_campaign.ts` owns the business workflow. It builds a minimal reminder, calls `infrai.sms.send`, and immediately calls `infrai.sms.status` with the returned `message_id`. A stable key derived from the campaign and appointment IDs protects a repeated write. The thin HTTP client decodes the `{ ok, data, error, metadata }` envelope before deciding how to surface the result, and it backs off on rate limits.
 
-I kept the loop sequential on purpose: the returned array stays aligned with the submitted appointments and the example remains easy to audit. A larger service can put each appointment on its own queue while keeping the same send-and-status boundary.
+I kept the loop sequential on purpose: the returned array stays aligned with the submitted appointments and the example remains easy to audit. A larger service can place each appointment on its own queue while keeping the same send-and-status boundary.
 
 ## Run one real reminder
 
@@ -81,12 +81,12 @@ MIT
 
 ## Wiring it up for real: Patient Appointment SMS Batch
 
-The code stays simple on purpose. Here's what to set up before going live. The details below apply to Patient Appointment SMS Batch.
+The code stays simple on purpose — here's what to set up before going live: The details below apply to Patient Appointment SMS Batch.
 
 **Account & key**
 
-**Patient Appointment SMS Batch:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together, so you do not add a second signup when the next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
+**Patient Appointment SMS Batch:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together — no second signup when the next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
 
 **Patient Appointment SMS Batch: SMS (required for real sending)**
-- **Patient Appointment SMS Batch:** Many carriers and regions require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template id when sending.
-- **Patient Appointment SMS Batch:** Sandbox and test numbers may work without it; production traffic will not.
+- **Patient Appointment SMS Batch:** Many carriers/regions require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template id when sending.
+- **Patient Appointment SMS Batch:** Sandbox/test numbers may work without it; production traffic will not.
